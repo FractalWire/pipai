@@ -13,11 +13,7 @@ import litellm
 
 
 def list_models(filter_string: Optional[str] = None) -> None:
-    """List available LLM models, optionally filtered by a string.
-
-    Args:
-        filter_string: Optional string to filter model names by
-    """
+    """List available LLM models, optionally filtered by a string."""
     # Get models from litellm's model_list
     models: List[str] = litellm.model_list
 
@@ -37,12 +33,7 @@ def list_models(filter_string: Optional[str] = None) -> None:
 
 
 def process_input(model_name: str, prompt: str) -> None:
-    """Process stdin input as context and use provided prompt.
-
-    Args:
-        model_name: Name of the LLM model to use
-        prompt: User prompt to send to the model
-    """
+    """Process stdin input as context and use provided prompt."""
     # Read from stdin if available
     if not sys.stdin.isatty():
         context = sys.stdin.read().strip()

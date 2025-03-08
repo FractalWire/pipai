@@ -74,15 +74,12 @@ fixable = ["ALL"]
 unfixable = []
 
 # Enable pycodestyle (E), Pyflakes (F), isort (I), and more
-select = ["E", "F", "I", "N", "B", "W", "D"]
+select = ["E", "F", "I", "N", "B", "W"]
 ignore = []
 
 [tool.ruff.lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10
 max-complexity = 10
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 # Allow unused imports in __init__.py files
