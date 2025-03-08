@@ -38,7 +38,9 @@ You can create pre-defined prompts in the `prompts` directory:
 $XDG_CONFIG_HOME/pipai/prompts/
 ```
 
-Each file in this directory becomes a command-line option. For example, if you create:
+Each file in this directory becomes a command-line option. The content of these files will be sent as system prompts to the LLM, while the piped input and command-line prompt will be sent as user prompts.
+
+For example, if you create:
 
 ```
 $XDG_CONFIG_HOME/pipai/prompts/summarize_csv
@@ -55,6 +57,8 @@ You can use it with:
 ```bash
 pipai --summarize_csv --model gpt-3.5-turbo "Focus on the financial aspects"
 ```
+
+This will send "Analyze this CSV data..." as a system prompt, and the piped data plus "Focus on the financial aspects" as a user prompt.
 
 ## Usage
 
@@ -91,12 +95,17 @@ cat data.csv | pipai --summarize_csv --financial_advisor "Focus on Q3 results"
 
 # Use pre-defined prompts without command line prompt
 cat data.csv | pipai --summarize_csv --financial_advisor
+
+# Use style-focused prompts
+cat report.md | pipai --markdown_output "Improve this documentation"
+cat data.json | pipai --json_output "Analyze this data"
+cat email.txt | pipai --overly_polite "Respond to this email"
 ```
 
 When using the tool, it will:
 1. Take any piped input as context
-2. Combine any pre-defined prompts you specified
-3. Add your command-line prompt
+2. Send any pre-defined prompts as system prompts
+3. Send the context and your command-line prompt as a user prompt
 4. Send everything to the specified LLM model
 5. Display the response
 
@@ -111,6 +120,9 @@ cat main.py | pipai --code_explainer "Focus on the main function"
 
 # Analyze data with multiple prompts
 cat data.json | pipai --json_analyzer --data_scientist --financial_advisor "Highlight growth opportunities"
+
+# Use fun personality prompts
+cat bird_sighting.txt | pipai --bird_enthusiast "Identify this bird species"
 ```
 
 ## Requirements

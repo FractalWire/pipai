@@ -29,10 +29,12 @@ fi
 
 # Copy example prompts
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-if [ -f "$SCRIPT_DIR/code_explainer" ]; then
-    cp "$SCRIPT_DIR/code_explainer" "$PROMPT_DIR/"
-    echo "Installed example prompt: code_explainer"
-fi
+for prompt in code_explainer markdown_output json_output overly_polite bird_enthusiast; do
+    if [ -f "$SCRIPT_DIR/$prompt" ]; then
+        cp "$SCRIPT_DIR/$prompt" "$PROMPT_DIR/"
+        echo "Installed example prompt: $prompt"
+    fi
+done
 
 echo "Configuration setup complete!"
 echo "Your config directory is: $CONFIG_DIR"

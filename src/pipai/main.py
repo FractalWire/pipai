@@ -46,17 +46,19 @@ def list_models(filter_string: Optional[str] = None) -> None:
 def list_prompts() -> None:
     """List available pre-defined prompts."""
     prompts = get_available_prompts()
-    
+
     if not prompts:
         print("No pre-defined prompts found")
         return
-    
+
     print("Available prompts:")
     for prompt in sorted(prompts):
         print(f"  - {prompt}")
 
 
-def process_input(model_name: str, user_prompt: str, predefined_prompts: Dict[str, str]) -> None:
+def process_input(
+    model_name: str, user_prompt: str, predefined_prompts: Dict[str, str]
+) -> None:
     """Process stdin input as context and use provided prompt.
 
     Args:
@@ -70,21 +72,30 @@ def process_input(model_name: str, user_prompt: str, predefined_prompts: Dict[st
     else:
         context = ""
 
-    # Combine pre-defined prompts with user prompt
-    combined_prompt = ""
-    for name, content in predefined_prompts.items():
-        combined_prompt += f"[{name}]\n{content}\n\n"
-    
-    combined_prompt += user_prompt
+    # Prepare messages for the LLM
+    messages = []
 
-    # Combine context and prompt
-    full_prompt = f"Context:\n{context}\n\nPrompt: {combined_prompt}"
+    # Add predefined prompts as system prompts
+    if predefined_prompts:
+        system_content = ""
+        for name, content in predefined_prompts.items():
+            system_content += f"[{name}]\n{content}\n\n"
+
+        messages.append({"role": "system", "content": system_content.strip()})
+
+    # Combine context and user prompt as user message
+    user_content = ""
+    if context:
+        user_content += f"# Data:\n{context}\n\n"
+
+    if user_prompt:
+        user_content += f"# Prompt: {user_prompt}"
+
+    if user_content:
+        messages.append({"role": "user", "content": user_content.strip()})
 
     try:
-        response = litellm.completion(
-            model=model_name, messages=[{"role": "user", "content": full_prompt}]
-        )
-        print("\nResponse:")
+        response = litellm.completion(model=model_name, messages=messages)
         print(response.choices[0].message.content)
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
@@ -95,10 +106,10 @@ def main() -> None:
     """Main entry point for the CLI tool."""
     # Ensure config directories exist
     ensure_config_dirs()
-    
+
     # Get available prompts for dynamic argument creation
     available_prompts = get_available_prompts()
-    
+
     parser = argparse.ArgumentParser(description="LLM command-line tool using LiteLLM")
 
     # Create mutually exclusive group for primary commands
@@ -139,7 +150,7 @@ def main() -> None:
     if args.models is not None:
         list_models(args.models)
         return
-    
+
     if args.prompts:
         list_prompts()
         return
@@ -148,7 +159,7 @@ def main() -> None:
     model_name = args.model
     if not model_name:
         model_name = get_default_llm()
-    
+
     if not model_name:
         parser.error("No model specified. Use --model or set DEFAULT_LLM in config.")
         return
@@ -162,15 +173,17 @@ def main() -> None:
             if content:
                 predefined_prompts[prompt_name] = content
                 has_predefined_prompts = True
-    
+
     # Check if we need a prompt
     if args.prompt is None and not has_predefined_prompts:
-        parser.error("A prompt is required when using --model (either as command line argument or from predefined prompts)")
+        parser.error(
+            "A prompt is required when using --model (either as command line argument or from predefined prompts)"
+        )
         return
 
     # Use empty string if no command line prompt was provided
     user_prompt = args.prompt if args.prompt is not None else ""
-    
+
     process_input(model_name, user_prompt, predefined_prompts)
 
 
