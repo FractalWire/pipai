@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pipai"
+version = "0.1.0"
+description = "Command-line tool for interacting with LLMs using LiteLLM"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "litellm>=1.63.3",
+]
+
+[project.scripts]
+pipai = "pipai.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["pipai"]
