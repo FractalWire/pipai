@@ -5,25 +5,10 @@ A command-line tool that uses LiteLLM to interact with various LLM models. It ta
 ## Installation
 
 ```bash
-# Using uv (recommended)
-uv pip install -e .
-
-# Or using pip
-pip install -e .
-```
-
-## Project Structure
-
-The project follows the standard Python packaging structure:
-
-```
-pipai/
-├── src/
-│   └── pipai/
-│       ├── __init__.py
-│       └── main.py
-├── pyproject.toml
-└── README.md
+# Using uv
+uv venv
+uv pip install git+https://github.com/fractalwire/pipai.git
+ln -s $(PWD)/.venv/bin/pipai /usr/bin/pipai
 ```
 
 ## Usage
@@ -68,18 +53,3 @@ cat main.py | pipai --model claude-3-sonnet-20240229 "Explain what this code doe
 
 - Python 3.12+
 - LiteLLM
-
-### Code Quality
-
-This project uses [Ruff](https://github.com/astral-sh/ruff) for linting and formatting:
-
-```bash
-# Run linter
-ruff check .
-
-# Run formatter
-ruff format .
-
-# Fix auto-fixable issues
-ruff check --fix .
-```
