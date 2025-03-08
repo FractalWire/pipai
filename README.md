@@ -66,5 +66,20 @@ cat main.py | pipai --model claude-3-sonnet-20240229 "Explain what this code doe
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.12+
 - LiteLLM
+
+### Code Quality
+
+This project uses [Ruff](https://github.com/astral-sh/ruff) for linting and formatting:
+
+```bash
+# Run linter
+ruff check .
+
+# Run formatter
+ruff format .
+
+# Fix auto-fixable issues
+ruff check --fix .
+```
