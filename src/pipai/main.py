@@ -7,13 +7,24 @@ to generate responses from LLM models.
 
 import argparse
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import litellm
 
+from pipai.config import (
+    ensure_config_dirs,
+    get_available_prompts,
+    get_default_llm,
+    load_prompt,
+)
+
 
 def list_models(filter_string: Optional[str] = None) -> None:
-    """List available LLM models, optionally filtered by a string."""
+    """List available LLM models, optionally filtered by a string.
+
+    Args:
+        filter_string: Optional string to filter model names by
+    """
     # Get models from litellm's model_list
     models: List[str] = litellm.model_list
 
@@ -32,16 +43,42 @@ def list_models(filter_string: Optional[str] = None) -> None:
         print(f"  - {model}")
 
 
-def process_input(model_name: str, prompt: str) -> None:
-    """Process stdin input as context and use provided prompt."""
+def list_prompts() -> None:
+    """List available pre-defined prompts."""
+    prompts = get_available_prompts()
+    
+    if not prompts:
+        print("No pre-defined prompts found")
+        return
+    
+    print("Available prompts:")
+    for prompt in sorted(prompts):
+        print(f"  - {prompt}")
+
+
+def process_input(model_name: str, user_prompt: str, predefined_prompts: Dict[str, str]) -> None:
+    """Process stdin input as context and use provided prompt.
+
+    Args:
+        model_name: Name of the LLM model to use
+        user_prompt: User prompt to send to the model
+        predefined_prompts: Dictionary of pre-defined prompts to include
+    """
     # Read from stdin if available
     if not sys.stdin.isatty():
         context = sys.stdin.read().strip()
     else:
         context = ""
 
+    # Combine pre-defined prompts with user prompt
+    combined_prompt = ""
+    for name, content in predefined_prompts.items():
+        combined_prompt += f"[{name}]\n{content}\n\n"
+    
+    combined_prompt += user_prompt
+
     # Combine context and prompt
-    full_prompt = f"Context:\n{context}\n\nPrompt: {prompt}"
+    full_prompt = f"Context:\n{context}\n\nPrompt: {combined_prompt}"
 
     try:
         response = litellm.completion(
@@ -56,10 +93,16 @@ def process_input(model_name: str, prompt: str) -> None:
 
 def main() -> None:
     """Main entry point for the CLI tool."""
+    # Ensure config directories exist
+    ensure_config_dirs()
+    
+    # Get available prompts for dynamic argument creation
+    available_prompts = get_available_prompts()
+    
     parser = argparse.ArgumentParser(description="LLM command-line tool using LiteLLM")
 
-    # Create mutually exclusive group for --models and --model
-    group = parser.add_mutually_exclusive_group(required=True)
+    # Create mutually exclusive group for primary commands
+    group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--models",
         metavar="FILTER",
@@ -72,6 +115,19 @@ def main() -> None:
         metavar="MODEL_NAME",
         help="Specify the model to use for generating a response",
     )
+    group.add_argument(
+        "--prompts",
+        action="store_true",
+        help="List available pre-defined prompts",
+    )
+
+    # Add arguments for each available prompt
+    for prompt_name in available_prompts:
+        parser.add_argument(
+            f"--{prompt_name}",
+            action="store_true",
+            help=f"Use the pre-defined '{prompt_name}' prompt",
+        )
 
     # Add prompt as a positional argument
     parser.add_argument(
@@ -82,10 +138,40 @@ def main() -> None:
 
     if args.models is not None:
         list_models(args.models)
-    elif args.model:
-        if args.prompt is None:
-            parser.error("A prompt is required when using --model")
-        process_input(args.model, args.prompt)
+        return
+    
+    if args.prompts:
+        list_prompts()
+        return
+
+    # Get model name (from args or default)
+    model_name = args.model
+    if not model_name:
+        model_name = get_default_llm()
+    
+    if not model_name:
+        parser.error("No model specified. Use --model or set DEFAULT_LLM in config.")
+        return
+
+    # Check if we have any predefined prompts
+    predefined_prompts = {}
+    has_predefined_prompts = False
+    for prompt_name in available_prompts:
+        if getattr(args, prompt_name, False):
+            content = load_prompt(prompt_name)
+            if content:
+                predefined_prompts[prompt_name] = content
+                has_predefined_prompts = True
+    
+    # Check if we need a prompt
+    if args.prompt is None and not has_predefined_prompts:
+        parser.error("A prompt is required when using --model (either as command line argument or from predefined prompts)")
+        return
+
+    # Use empty string if no command line prompt was provided
+    user_prompt = args.prompt if args.prompt is not None else ""
+    
+    process_input(model_name, user_prompt, predefined_prompts)
 
 
 if __name__ == "__main__":
