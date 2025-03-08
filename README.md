@@ -11,6 +11,26 @@ uv pip install git+https://github.com/fractalwire/pipai.git
 ln -s $(PWD)/.venv/bin/pipai /usr/bin/pipai
 ```
 
+### Bash Auto-completion
+
+To enable bash auto-completion for pipai commands:
+
+```bash
+# Create the directory if it doesn't exist
+mkdir -p ~/.local/share/pipai
+
+# Copy the completion script
+cp pipai-completion.sh ~/.local/share/pipai/bash_completion
+
+# Add to your .bashrc or .bash_profile
+echo 'source ~/.local/share/pipai/bash_completion' >> ~/.bashrc
+
+# Apply changes to current session
+source ~/.bashrc
+```
+
+This will enable tab completion for pipai commands, options, and available models.
+
 ## Configuration
 
 pipai uses the XDG configuration directory structure. Configuration files are stored in:
