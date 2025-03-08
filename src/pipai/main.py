@@ -26,7 +26,8 @@ def list_models(filter_string: Optional[str] = None) -> None:
 
     if not models:
         print(
-            "No models found" + (f" matching '{filter_string}'" if filter_string else "")
+            "No models found"
+            + (f" matching '{filter_string}'" if filter_string else "")
         )
         return
 
