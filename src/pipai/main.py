@@ -25,16 +25,13 @@ def list_models(filter_string=None):
     for model in sorted(models):
         print(f"  - {model}")
 
-def process_input(model_name):
-    """Process stdin input as context and get user prompt."""
+def process_input(model_name, prompt):
+    """Process stdin input as context and use provided prompt."""
     # Read from stdin if available
     if not sys.stdin.isatty():
         context = sys.stdin.read().strip()
     else:
         context = ""
-    
-    # Get prompt from user
-    prompt = input("Enter your prompt: ")
     
     # Combine context and prompt
     full_prompt = f"Context:\n{context}\n\nPrompt: {prompt}"
@@ -60,12 +57,18 @@ def main():
     group.add_argument("--model", metavar="MODEL_NAME", 
                       help="Specify the model to use for generating a response")
     
+    # Add prompt as a positional argument
+    parser.add_argument("prompt", nargs="?", default=None,
+                      help="The prompt to send to the LLM model")
+    
     args = parser.parse_args()
     
     if args.models is not None:
         list_models(args.models)
     elif args.model:
-        process_input(args.model)
+        if args.prompt is None:
+            parser.error("A prompt is required when using --model")
+        process_input(args.model, args.prompt)
 
 if __name__ == "__main__":
     main()

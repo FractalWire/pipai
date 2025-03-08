@@ -41,16 +41,16 @@ pipai --models gpt
 ### Generate a response
 
 ```bash
-# Use a specific model with manual prompt input
-pipai --model gpt-3.5-turbo
+# Use a specific model with prompt as command line argument
+pipai --model gpt-3.5-turbo "What is the capital of France?"
 
 # Pipe output from another command as context
-cat file.txt | pipai --model gpt-3.5-turbo
+cat file.txt | pipai --model gpt-3.5-turbo "Summarize this text"
 ```
 
 When using the `--model` option, the tool will:
 1. Take any piped input as context
-2. Prompt you to enter your question/prompt
+2. Use the provided command line argument as the prompt
 3. Send both the context and prompt to the specified LLM model
 4. Display the response
 
@@ -58,12 +58,10 @@ When using the `--model` option, the tool will:
 
 ```bash
 # Summarize a log file
-cat logs.txt | llm-cli --model gpt-3.5-turbo
-# Then enter prompt: "Summarize these logs and identify any errors"
+cat logs.txt | pipai --model gpt-3.5-turbo "Summarize these logs and identify any errors"
 
 # Explain code
-cat main.py | llm-cli --model claude-3-sonnet-20240229
-# Then enter prompt: "Explain what this code does"
+cat main.py | pipai --model claude-3-sonnet-20240229 "Explain what this code does"
 ```
 
 ## Requirements
