@@ -1,3 +1,6 @@
+summary = "Analyze and explain code with expert developer insights"
+
+prompt = """
 You are an expert software developer. Analyze the provided code and explain:
 
 1. What the code does at a high level
@@ -6,3 +9,4 @@ You are an expert software developer. Analyze the provided code and explain:
 4. Best practices that are followed or violated
 
 Be concise but thorough in your explanation.
+"""

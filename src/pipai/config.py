@@ -6,7 +6,8 @@ and managing pre-defined prompts.
 
 import os
 import pathlib
-from typing import Dict, List, Optional
+import tomllib
+from typing import Dict, List, Optional, Tuple
 
 
 def get_config_dir() -> pathlib.Path:
@@ -83,8 +84,37 @@ def load_prompt(prompt_name: str) -> Optional[str]:
     if not prompt_file.exists() and not prompt_file.is_file():
         return None
 
-    with open(prompt_file, "r", encoding="utf-8") as f:
-        return f.read().strip()
+    try:
+        with open(prompt_file, "rb") as f:
+            data = tomllib.load(f)
+            return data.get("prompt", "").strip()
+    except (tomllib.TOMLDecodeError, KeyError):
+        # Fallback to reading the file as plain text for backward compatibility
+        with open(prompt_file, "r", encoding="utf-8") as f:
+            return f.read().strip()
+
+
+def get_prompt_summary(prompt_name: str) -> Optional[str]:
+    """Get the summary of a pre-defined prompt.
+
+    Args:
+        prompt_name: Name of the prompt to get summary for
+
+    Returns:
+        The prompt summary or None if not found
+    """
+    prompt_dir = get_prompt_dir()
+    prompt_file = prompt_dir / prompt_name
+
+    if not prompt_file.exists() and not prompt_file.is_file():
+        return None
+
+    try:
+        with open(prompt_file, "rb") as f:
+            data = tomllib.load(f)
+            return data.get("summary", f"Use the pre-defined '{prompt_name}' prompt").strip()
+    except (tomllib.TOMLDecodeError, KeyError):
+        return f"Use the pre-defined '{prompt_name}' prompt"
 
 
 def load_prompts(prompt_names: List[str]) -> Dict[str, str]:

@@ -15,6 +15,7 @@ from pipai.config import (
     ensure_config_dirs,
     get_available_prompts,
     get_default_llm,
+    get_prompt_summary,
     load_prompt,
 )
 
@@ -134,10 +135,11 @@ def main() -> None:
 
     # Add arguments for each available prompt
     for prompt_name in available_prompts:
+        summary = get_prompt_summary(prompt_name)
         parser.add_argument(
             f"--{prompt_name}",
             action="store_true",
-            help=f"Use the pre-defined '{prompt_name}' prompt",
+            help=summary,
         )
 
     # Add prompt as a positional argument
