@@ -133,10 +133,13 @@ def main() -> None:
         help="List available pre-defined prompts",
     )
 
+    # Create a prompt group for predefined prompts
+    prompt_group = parser.add_argument_group('Predefined Prompts')
+    
     # Add arguments for each available prompt
     for prompt_name in available_prompts:
         summary = get_prompt_summary(prompt_name)
-        parser.add_argument(
+        prompt_group.add_argument(
             f"--{prompt_name}",
             action="store_true",
             help=summary,
