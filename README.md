@@ -7,6 +7,7 @@ A command-line tool that uses LiteLLM to interact with various LLM models. It ta
 - [Installation](#installation)
 - [Configuration](#configuration)
   - [Default Model](#default-model)
+  - [LiteLLM Configuration](#litellm-configuration)
   - [Pre-defined Prompts](#pre-defined-prompts)
 - [Usage](#usage)
   - [Basic Commands](#basic-commands)
@@ -44,6 +45,27 @@ You can set a default LLM model in the config file:
 # In $XDG_CONFIG_HOME/pipai/config
 DEFAULT_LLM=gpt-3.5-turbo
 ```
+
+### LiteLLM Configuration
+
+pipai uses the LiteLLM SDK to connect to various LLM providers. To configure your API keys:
+
+Set environment variables for your LLM providers:
+
+```bash
+# OpenAI
+export OPENAI_API_KEY=sk-...
+
+# Anthropic
+export ANTHROPIC_API_KEY=sk-...
+
+# Azure OpenAI
+export AZURE_API_KEY=...
+export AZURE_API_BASE=...
+export AZURE_API_VERSION=...
+```
+
+For detailed configuration options, refer to the [LiteLLM documentation](https://docs.litellm.ai/docs/completion/supported_models).
 
 ### Pre-defined Prompts
 
