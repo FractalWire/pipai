@@ -4,10 +4,13 @@ This module handles loading configuration from the XDG config directory
 and managing pre-defined prompts.
 """
 
+import json
 import os
 import pathlib
+import time
+from datetime import datetime, timedelta
 import tomllib
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 
 def get_config_dir() -> pathlib.Path:
@@ -133,6 +136,119 @@ def load_prompts(prompt_names: List[str]) -> Dict[str, str]:
             result[name] = content
     return result
 
+
+def get_conversation_file() -> pathlib.Path:
+    """Get the file path for storing active conversation.
+    
+    Returns:
+        Path to the conversation file
+    """
+    return get_config_dir() / "conversation.json"
+
+def load_conversation() -> Dict[str, Any]:
+    """Load the active conversation from the conversation file.
+    
+    Returns:
+        Dictionary containing conversation data or empty dict if none exists
+    """
+    conversation_file = get_conversation_file()
+    if not conversation_file.exists():
+        return {}
+    
+    try:
+        with open(conversation_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {}
+
+def save_conversation(conversation: Dict[str, Any]) -> None:
+    """Save the conversation to the conversation file.
+    
+    Args:
+        conversation: Dictionary containing conversation data
+    """
+    conversation_file = get_conversation_file()
+    
+    with open(conversation_file, "w", encoding="utf-8") as f:
+        json.dump(conversation, f, indent=2)
+
+def start_conversation() -> None:
+    """Start a new conversation."""
+    conversation = {
+        "active": True,
+        "messages": [],
+        "started_at": time.time(),
+        "last_message_at": time.time()
+    }
+    save_conversation(conversation)
+
+def stop_conversation() -> None:
+    """Stop the active conversation."""
+    conversation_file = get_conversation_file()
+    if conversation_file.exists():
+        conversation_file.unlink()
+
+def add_message_to_conversation(role: str, content: str) -> None:
+    """Add a new message to the active conversation.
+    
+    Args:
+        role: The role of the message sender (user, assistant, system)
+        content: The content of the message
+    """
+    conversation = load_conversation()
+    
+    if not conversation or not conversation.get("active", False):
+        # No active conversation
+        return
+    
+    if "messages" not in conversation:
+        conversation["messages"] = []
+    
+    # Add the new message
+    conversation["messages"].append({
+        "role": role,
+        "content": content,
+        "timestamp": time.time()
+    })
+    
+    # Update last message timestamp
+    conversation["last_message_at"] = time.time()
+    
+    save_conversation(conversation)
+
+def get_conversation_messages() -> List[Dict[str, str]]:
+    """Get messages from the active conversation formatted for LLM.
+    
+    Returns:
+        List of message dictionaries with role and content keys
+    """
+    conversation = load_conversation()
+    
+    if not conversation or not conversation.get("active", False):
+        return []
+    
+    # Format messages for LLM (remove timestamps)
+    return [{"role": msg["role"], "content": msg["content"]} 
+            for msg in conversation.get("messages", [])]
+
+def is_conversation_expired(timeout_hours: float = 1.0) -> bool:
+    """Check if the conversation has expired based on timeout.
+    
+    Args:
+        timeout_hours: Number of hours after which a conversation is considered expired
+        
+    Returns:
+        True if conversation has expired, False otherwise
+    """
+    conversation = load_conversation()
+    
+    if not conversation or not conversation.get("active", False):
+        return False
+    
+    last_message_at = conversation.get("last_message_at", 0)
+    expiration_time = last_message_at + (timeout_hours * 3600)  # Convert hours to seconds
+    
+    return time.time() > expiration_time
 
 def ensure_config_dirs() -> None:
     """Ensure that configuration directories exist."""

@@ -8,12 +8,11 @@ A command-line tool that uses LiteLLM to interact with various LLM models. It ta
 - [Configuration](#configuration)
   - [Default Model](#default-model)
   - [Pre-defined Prompts](#pre-defined-prompts)
-  - [Conversation History](#conversation-history)
 - [Usage](#usage)
   - [Basic Commands](#basic-commands)
   - [Working with Models](#working-with-models)
   - [Working with Prompts](#working-with-prompts)
-  - [Managing Conversation History](#managing-conversation-history)
+  - [Managing Conversations](#managing-conversations)
 - [Examples](#examples)
 - [Bash Auto-completion](#bash-auto-completion)
 - [Requirements](#requirements)
@@ -69,6 +68,32 @@ Focus on patterns, outliers, and actionable recommendations.
 """
 ```
 
+### Managing Conversations
+
+pipai supports multi-turn conversations with LLMs, allowing you to maintain context across multiple queries:
+
+```bash
+# Start a new conversation
+pipai --start-conversation "Tell me about quantum computing"
+
+# Continue the conversation (automatically uses previous context)
+pipai "What are the practical applications?"
+
+# Make a one-off query without affecting the conversation
+pipai --no-conversation "What's the weather today?"
+
+# Continue the conversation
+pipai "Which companies are leaders in quantum computing?"
+
+# Stop the conversation when you're done
+pipai --stop-conversation
+```
+
+If you try to continue a conversation that's been inactive for more than 1 hour, pipai will ask if you want to:
+- Continue the existing conversation
+- Stop the old conversation and start fresh
+- Abort the current query
+
 ## Usage
 
 ### Basic Commands
@@ -113,6 +138,22 @@ pipai --markdown_output --code_explainer "Document this code"
 cat main.py | pipai --code_explainer "Focus on the main function"
 ```
 
+### Managing Conversations
+
+```bash
+# Start a new conversation
+pipai --start-conversation "Tell me about quantum computing"
+
+# Continue the conversation with follow-up questions
+pipai "What are the practical applications?"
+
+# Make a one-off query without affecting the conversation
+pipai --no-conversation "What's the weather today?"
+
+# End the conversation
+pipai --stop-conversation
+```
+
 ## Examples
 
 ```bash
@@ -127,6 +168,12 @@ cat data.json | pipai --json_output --data_scientist "Highlight growth opportuni
 
 # Use fun personality prompts
 cat bird_sighting.txt | pipai --bird_enthusiast "Identify this bird species"
+
+# Have a multi-turn conversation
+pipai --start-conversation "Tell me about quantum computing"
+pipai "What are the practical applications?"
+pipai "Which companies are leaders in this field?"
+pipai --stop-conversation
 ```
 
 ## Bash Auto-completion
