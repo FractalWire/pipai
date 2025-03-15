@@ -65,31 +65,34 @@ def list_prompts() -> None:
 
 def check_conversation_expiry() -> bool:
     """Check if conversation has expired and prompt user for action.
-    
+
     Returns:
         True if should continue with query, False if should abort
     """
     if is_conversation_expired():
         print("Your conversation is more than 1 hour old.")
         while True:
-            choice = input("Do you want to (c)ontinue, (s)top it, or (a)bort this query? [c/s/a]: ").lower()
-            if choice in ('c', 'continue'):
+            choice = input(
+                "Do you want to (c)ontinue, (s)top it, or (a)bort this query? [c/s/a]: "
+            ).lower()
+            if choice in ("c", "continue"):
                 return True
-            elif choice in ('s', 'stop'):
+            elif choice in ("s", "stop"):
                 stop_conversation()
                 print("Conversation stopped.")
                 return True
-            elif choice in ('a', 'abort'):
+            elif choice in ("a", "abort"):
                 return False
             else:
                 print("Invalid choice. Please enter 'c', 's', or 'a'.")
     return True
 
+
 def process_input(
-    model_name: str, 
-    user_prompt: str, 
+    model_name: str,
+    user_prompt: str,
     predefined_prompts: Dict[str, str],
-    use_conversation: bool = True
+    use_conversation: bool = True,
 ) -> None:
     """Process stdin input as context and use provided prompt.
 
@@ -103,7 +106,7 @@ def process_input(
     if use_conversation and not check_conversation_expiry():
         print("Query aborted.")
         return
-        
+
     # Read from stdin if available
     if not sys.stdin.isatty():
         context = sys.stdin.read().strip()
@@ -120,7 +123,7 @@ def process_input(
             system_content += f"[{name}]\n{content}\n\n"
 
         messages.append({"role": "system", "content": system_content.strip()})
-        
+
         # Add system message to conversation if this is a new conversation
         conversation = load_conversation()
         if use_conversation and conversation and not conversation.get("messages"):
@@ -142,7 +145,7 @@ def process_input(
 
     if user_content:
         messages.append({"role": "user", "content": user_content.strip()})
-        
+
         # Add user message to conversation history
         if use_conversation:
             add_message_to_conversation("user", user_content.strip())
@@ -151,7 +154,7 @@ def process_input(
         response = litellm.completion(model=model_name, messages=messages)
         assistant_response = response.choices[0].message.content
         print(assistant_response)
-        
+
         # Add assistant response to conversation history
         if use_conversation:
             add_message_to_conversation("assistant", assistant_response)
@@ -189,9 +192,9 @@ def main() -> None:
         action="store_true",
         help="List available pre-defined prompts",
     )
-    
+
     # Add conversation management arguments
-    conversation_group = parser.add_argument_group('Conversation Management')
+    conversation_group = parser.add_argument_group("Conversation Management")
     conversation_group.add_argument(
         "--start-conversation",
         action="store_true",
@@ -209,8 +212,8 @@ def main() -> None:
     )
 
     # Create a prompt group for predefined prompts
-    prompt_group = parser.add_argument_group('Predefined Prompts')
-    
+    prompt_group = parser.add_argument_group("Predefined Prompts")
+
     # Add arguments for each available prompt
     for prompt_name in available_prompts:
         summary = get_prompt_summary(prompt_name)
@@ -234,13 +237,13 @@ def main() -> None:
     if args.prompts:
         list_prompts()
         return
-        
+
     # Handle conversation management
     if args.stop_conversation:
         stop_conversation()
         print("Conversation stopped.")
         return
-        
+
     if args.start_conversation:
         stop_conversation()  # Stop any existing conversation first
         start_conversation()
@@ -270,17 +273,19 @@ def main() -> None:
     # Check if we need a prompt
     if args.prompt is None and not has_predefined_prompts:
         parser.error(
-            "A prompt is required when using --model (either as command line argument or from predefined prompts)"
+            "A prompt is required when using --model "
+            "(either as command line argument or from predefined prompts)"
         )
         return
 
     # Use empty string if no command line prompt was provided
     user_prompt = args.prompt if args.prompt is not None else ""
-    
+
     # Determine if we should use conversation
     conversation = load_conversation()
-    use_conversation = (not args.no_conversation and 
-                       (args.start_conversation or (conversation and conversation.get("active", False))))
+    use_conversation = not args.no_conversation and (
+        args.start_conversation or (conversation and conversation.get("active", False))
+    )
 
     process_input(model_name, user_prompt, predefined_prompts, use_conversation)
 
