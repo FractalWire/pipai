@@ -8,7 +8,7 @@ _pipai_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
     # Basic options
-    opts="--models --model --prompts --start-conversation --stop-conversation --no-conversation"
+    opts="--models --model --prompts --create-prompt --edit-prompt --delete-prompt --start-conversation --stop-conversation --no-conversation"
     
     # Add dynamic prompts from config directory
     if [ -n "$XDG_CONFIG_HOME" ]; then
@@ -42,6 +42,14 @@ _pipai_completion() {
         --models)
             # Suggest common model filters
             COMPREPLY=( $(compgen -W "gpt claude llama mistral" -- "$cur") )
+            return 0
+            ;;
+        --edit-prompt|--delete-prompt)
+            # Suggest available prompts for editing or deleting
+            if [ -d "$PROMPT_DIR" ]; then
+                prompts=$(find "$PROMPT_DIR" -type f -exec basename {} \; 2>/dev/null)
+                COMPREPLY=( $(compgen -W "$prompts" -- "$cur") )
+            fi
             return 0
             ;;
         *)

@@ -90,6 +90,23 @@ Focus on patterns, outliers, and actionable recommendations.
 """
 ```
 
+#### Managing Prompts
+
+pipai provides commands to create, edit, and delete pre-defined prompts:
+
+```bash
+# Create a new prompt
+pipai --create-prompt summarize_csv
+
+# Edit an existing prompt using your default editor ($EDITOR)
+pipai --edit-prompt summarize_csv
+
+# Delete an existing prompt
+pipai --delete-prompt summarize_csv
+```
+
+When creating a prompt, you'll be prompted to enter a summary and the prompt text.
+
 ### Managing Conversations
 
 pipai supports multi-turn conversations with LLMs, allowing you to maintain context across multiple queries:
@@ -158,6 +175,15 @@ pipai --markdown_output --code_explainer "Document this code"
 
 # Use pre-defined prompts with piped input
 cat main.py | pipai --code_explainer "Focus on the main function"
+
+# Create a new prompt
+pipai --create-prompt my_custom_prompt
+
+# Edit an existing prompt
+pipai --edit-prompt code_explainer
+
+# Delete a prompt you no longer need
+pipai --delete-prompt old_prompt
 ```
 
 ### Managing Conversations

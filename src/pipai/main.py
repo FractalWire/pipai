@@ -23,6 +23,9 @@ from pipai.config import (
     add_message_to_conversation,
     get_conversation_messages,
     is_conversation_expired,
+    edit_prompt,
+    create_prompt,
+    delete_prompt,
 )
 
 
@@ -192,6 +195,21 @@ def main() -> None:
         action="store_true",
         help="List available pre-defined prompts",
     )
+    group.add_argument(
+        "--create-prompt",
+        metavar="NAME",
+        help="Create a new pre-defined prompt",
+    )
+    group.add_argument(
+        "--edit-prompt",
+        metavar="NAME",
+        help="Edit an existing pre-defined prompt using $EDITOR",
+    )
+    group.add_argument(
+        "--delete-prompt",
+        metavar="NAME",
+        help="Delete an existing pre-defined prompt",
+    )
 
     # Add conversation management arguments
     conversation_group = parser.add_argument_group("Conversation Management")
@@ -236,6 +254,74 @@ def main() -> None:
 
     if args.prompts:
         list_prompts()
+        return
+        
+    if args.create_prompt:
+        prompt_name = args.create_prompt
+        
+        # Check if prompt already exists
+        if prompt_name in get_available_prompts():
+            print(f"Error: Prompt '{prompt_name}' already exists.")
+            print(f"Use --edit-prompt {prompt_name} to modify it.")
+            return
+            
+        # Get summary and prompt text from user
+        print(f"Creating new prompt: {prompt_name}")
+        summary = input("Enter a brief summary: ")
+        print("Enter the prompt text (end with a line containing only '.')")
+        
+        prompt_lines = []
+        while True:
+            line = input()
+            if line == ".":
+                break
+            prompt_lines.append(line)
+        
+        prompt_text = "\n".join(prompt_lines)
+        
+        # Create the prompt
+        if create_prompt(prompt_name, summary, prompt_text):
+            print(f"Prompt '{prompt_name}' created successfully.")
+            print(f"You can use it with --{prompt_name}")
+        else:
+            print(f"Error: Failed to create prompt '{prompt_name}'.")
+        return
+        
+    if args.edit_prompt:
+        prompt_name = args.edit_prompt
+        
+        # Check if prompt exists
+        if prompt_name not in get_available_prompts():
+            print(f"Error: Prompt '{prompt_name}' does not exist.")
+            print("Use --create-prompt to create a new prompt.")
+            return
+            
+        # Edit the prompt
+        if edit_prompt(prompt_name):
+            print(f"Prompt '{prompt_name}' edited successfully.")
+        else:
+            print(f"Error: Failed to edit prompt '{prompt_name}'.")
+        return
+        
+    if args.delete_prompt:
+        prompt_name = args.delete_prompt
+        
+        # Check if prompt exists
+        if prompt_name not in get_available_prompts():
+            print(f"Error: Prompt '{prompt_name}' does not exist.")
+            return
+            
+        # Confirm deletion
+        confirm = input(f"Are you sure you want to delete prompt '{prompt_name}'? (y/N): ")
+        if confirm.lower() != "y":
+            print("Deletion cancelled.")
+            return
+            
+        # Delete the prompt
+        if delete_prompt(prompt_name):
+            print(f"Prompt '{prompt_name}' deleted successfully.")
+        else:
+            print(f"Error: Failed to delete prompt '{prompt_name}'.")
         return
 
     # Handle conversation management

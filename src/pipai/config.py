@@ -7,10 +7,12 @@ and managing pre-defined prompts.
 import json
 import os
 import pathlib
+import shutil
+import subprocess
 import time
 from datetime import datetime, timedelta
 import tomllib
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Union
 
 
 def get_config_dir() -> pathlib.Path:
@@ -120,6 +122,95 @@ def get_prompt_summary(prompt_name: str) -> Optional[str]:
             ).strip()
     except (tomllib.TOMLDecodeError, KeyError):
         return f"Use the pre-defined '{prompt_name}' prompt"
+
+
+def create_prompt(name: str, summary: str, prompt_text: str) -> bool:
+    """Create a new pre-defined prompt.
+
+    Args:
+        name: Name of the prompt to create
+        summary: Summary description of the prompt
+        prompt_text: The actual prompt text
+
+    Returns:
+        True if prompt was created successfully, False otherwise
+    """
+    prompt_dir = get_prompt_dir()
+    prompt_file = prompt_dir / name
+
+    # Check if prompt already exists
+    if prompt_file.exists():
+        return False
+
+    # Create the prompt file
+    prompt_content = f'summary = "{summary}"\n\nprompt = """\n{prompt_text}\n"""'
+    
+    try:
+        with open(prompt_file, "w", encoding="utf-8") as f:
+            f.write(prompt_content)
+        return True
+    except Exception:
+        return False
+
+
+def delete_prompt(name: str) -> bool:
+    """Delete a pre-defined prompt.
+
+    Args:
+        name: Name of the prompt to delete
+
+    Returns:
+        True if prompt was deleted successfully, False otherwise
+    """
+    prompt_dir = get_prompt_dir()
+    prompt_file = prompt_dir / name
+
+    # Check if prompt exists
+    if not prompt_file.exists():
+        return False
+
+    try:
+        prompt_file.unlink()
+        return True
+    except Exception:
+        return False
+
+
+def edit_prompt(name: str) -> bool:
+    """Edit a pre-defined prompt using the default editor.
+
+    Args:
+        name: Name of the prompt to edit
+
+    Returns:
+        True if prompt was edited successfully, False otherwise
+    """
+    prompt_dir = get_prompt_dir()
+    prompt_file = prompt_dir / name
+
+    # Check if prompt exists
+    if not prompt_file.exists():
+        return False
+
+    # Get the editor from environment or use a default
+    editor = os.environ.get("EDITOR", "vim")
+
+    try:
+        # Open the file in the editor
+        result = subprocess.run([editor, str(prompt_file)], check=True)
+        
+        if result.returncode != 0:
+            return False
+
+        # Validate the edited file
+        try:
+            with open(prompt_file, "rb") as f:
+                tomllib.load(f)
+            return True
+        except tomllib.TOMLDecodeError:
+            return False
+    except Exception:
+        return False
 
 
 def load_prompts(prompt_names: List[str]) -> Dict[str, str]:
