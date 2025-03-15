@@ -10,11 +10,13 @@ import sys
 from typing import Dict, List, Optional
 
 import litellm
+from rich.console import Console
+from rich.markdown import Markdown
 
 from pipai.config import (
     ensure_config_dirs,
     get_available_prompts,
-    get_default_llm,
+    get_config,
     get_prompt_summary,
     load_prompt,
     load_conversation,
@@ -96,6 +98,7 @@ def process_input(
     user_prompt: str,
     predefined_prompts: Dict[str, str],
     use_conversation: bool = True,
+    use_markdown: Optional[bool] = None,
 ) -> None:
     """Process stdin input as context and use provided prompt.
 
@@ -120,11 +123,17 @@ def process_input(
     messages = []
 
     # Add predefined prompts as system prompts
-    if predefined_prompts:
-        system_content = ""
-        for name, content in predefined_prompts.items():
-            system_content += f"[{name}]\n{content}\n\n"
+    system_content = ""
 
+    # If no predefined prompts are specified and markdown is enabled, add markdown formatting
+    if not predefined_prompts and use_markdown:
+        system_content += "Format your response in clean, well-structured Markdown.\n\n"
+
+    # Add any specified predefined prompts
+    for name, content in predefined_prompts.items():
+        system_content += f"[{name}]\n{content}\n\n"
+
+    if system_content:
         messages.append({"role": "system", "content": system_content.strip()})
 
         # Add system message to conversation if this is a new conversation
@@ -156,7 +165,14 @@ def process_input(
     try:
         response = litellm.completion(model=model_name, messages=messages)
         assistant_response = response.choices[0].message.content
-        print(assistant_response)
+
+        # Render the response
+        console = Console()
+        if use_markdown:
+            markdown = Markdown(assistant_response)
+            console.print(markdown)
+        else:
+            console.print(assistant_response)
 
         # Add assistant response to conversation history
         if use_conversation:
@@ -229,6 +245,20 @@ def main() -> None:
         help="Don't use conversation history for this query",
     )
 
+    # Add formatting options
+    formatting_group = parser.add_argument_group("Output Formatting")
+    markdown_group = formatting_group.add_mutually_exclusive_group()
+    markdown_group.add_argument(
+        "--markdown",
+        action="store_true",
+        help="Enable markdown formatting for this response",
+    )
+    markdown_group.add_argument(
+        "--no-markdown",
+        action="store_true",
+        help="Disable markdown formatting for this response",
+    )
+
     # Create a prompt group for predefined prompts
     prompt_group = parser.add_argument_group("Predefined Prompts")
 
@@ -255,30 +285,30 @@ def main() -> None:
     if args.prompts:
         list_prompts()
         return
-        
+
     if args.create_prompt:
         prompt_name = args.create_prompt
-        
+
         # Check if prompt already exists
         if prompt_name in get_available_prompts():
             print(f"Error: Prompt '{prompt_name}' already exists.")
             print(f"Use --edit-prompt {prompt_name} to modify it.")
             return
-            
+
         # Get summary and prompt text from user
         print(f"Creating new prompt: {prompt_name}")
         summary = input("Enter a brief summary: ")
         print("Enter the prompt text (end with a line containing only '.')")
-        
+
         prompt_lines = []
         while True:
             line = input()
             if line == ".":
                 break
             prompt_lines.append(line)
-        
+
         prompt_text = "\n".join(prompt_lines)
-        
+
         # Create the prompt
         if create_prompt(prompt_name, summary, prompt_text):
             print(f"Prompt '{prompt_name}' created successfully.")
@@ -286,37 +316,39 @@ def main() -> None:
         else:
             print(f"Error: Failed to create prompt '{prompt_name}'.")
         return
-        
+
     if args.edit_prompt:
         prompt_name = args.edit_prompt
-        
+
         # Check if prompt exists
         if prompt_name not in get_available_prompts():
             print(f"Error: Prompt '{prompt_name}' does not exist.")
             print("Use --create-prompt to create a new prompt.")
             return
-            
+
         # Edit the prompt
         if edit_prompt(prompt_name):
             print(f"Prompt '{prompt_name}' edited successfully.")
         else:
             print(f"Error: Failed to edit prompt '{prompt_name}'.")
         return
-        
+
     if args.delete_prompt:
         prompt_name = args.delete_prompt
-        
+
         # Check if prompt exists
         if prompt_name not in get_available_prompts():
             print(f"Error: Prompt '{prompt_name}' does not exist.")
             return
-            
+
         # Confirm deletion
-        confirm = input(f"Are you sure you want to delete prompt '{prompt_name}'? (y/N): ")
+        confirm = input(
+            f"Are you sure you want to delete prompt '{prompt_name}'? (y/N): "
+        )
         if confirm.lower() != "y":
             print("Deletion cancelled.")
             return
-            
+
         # Delete the prompt
         if delete_prompt(prompt_name):
             print(f"Prompt '{prompt_name}' deleted successfully.")
@@ -337,10 +369,13 @@ def main() -> None:
         if args.prompt is None:
             return  # If no prompt provided, just start the conversation and exit
 
+    # Get configuration
+    config = get_config()
+
     # Get model name (from args or default)
     model_name = args.model
     if not model_name:
-        model_name = get_default_llm()
+        model_name = config.get("DEFAULT_LLM", None)
 
     if not model_name:
         parser.error("No model specified. Use --model or set DEFAULT_LLM in config.")
@@ -373,7 +408,18 @@ def main() -> None:
         args.start_conversation or (conversation and conversation.get("active", False))
     )
 
-    process_input(model_name, user_prompt, predefined_prompts, use_conversation)
+    # Determine markdown formatting preference
+    use_markdown = None  # None means use default from config
+    if args.markdown:
+        use_markdown = True
+    elif args.no_markdown:
+        use_markdown = False
+    else:
+        use_markdown = config.get("MARKDOWN_FORMATTING")
+
+    process_input(
+        model_name, user_prompt, predefined_prompts, use_conversation, use_markdown
+    )
 
 
 if __name__ == "__main__":

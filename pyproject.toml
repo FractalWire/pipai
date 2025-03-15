@@ -20,6 +20,7 @@ classifiers = [
 dependencies = [
     "google-cloud-aiplatform>=1.84.0",
     "litellm>=1.63.3",
+    "rich>=13.7.0",
 ]
 
 [project.optional-dependencies]

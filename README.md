@@ -128,6 +128,25 @@ pipai "Which companies are leaders in quantum computing?"
 pipai --stop-conversation
 ```
 
+### Output Formatting
+
+pipai can render responses in Markdown format for better readability in the terminal:
+
+```bash
+# Enable markdown formatting for a specific query
+pipai --markdown "Explain neural networks with code examples"
+
+# Disable markdown formatting for a specific query
+pipai --no-markdown "Give me a simple text response"
+```
+
+You can also set the default behavior in your config file:
+
+```
+# In $XDG_CONFIG_HOME/pipai/config
+MARKDOWN_FORMATTING=true
+```
+
 If you try to continue a conversation that's been inactive for more than 1 hour, pipai will ask if you want to:
 - Continue the existing conversation
 - Stop the old conversation and start fresh

@@ -31,25 +31,43 @@ def get_config_dir() -> pathlib.Path:
     return base_dir / "pipai"
 
 
-def get_default_llm() -> Optional[str]:
-    """Get the default LLM model from configuration.
+def get_config() -> Dict[str, Any]:
+    """Get all configuration settings from the config file.
 
     Returns:
-        The default LLM model name or None if not configured
+        Dictionary containing all configuration settings with their default values
     """
+    # Define default configuration values
+    config = {
+        "DEFAULT_LLM": None,
+        "MARKDOWN_FORMATTING": True,
+    }
+
     config_dir = get_config_dir()
     config_file = config_dir / "config"
 
     if not config_file.exists():
-        return None
+        return config
 
     with open(config_file, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if line.startswith("DEFAULT_LLM="):
-                return line.split("=", 1)[1].strip()
+            # Skip comments and empty lines
+            if not line or line.startswith("#"):
+                continue
 
-    return None
+            if "=" in line:
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+
+                # Process specific config types
+                if key == "DEFAULT_LLM":
+                    config[key] = value
+                elif key == "MARKDOWN_FORMATTING":
+                    config[key] = value.lower() in ("true", "yes", "1", "on")
+
+    return config
 
 
 def get_prompt_dir() -> pathlib.Path:
@@ -144,7 +162,7 @@ def create_prompt(name: str, summary: str, prompt_text: str) -> bool:
 
     # Create the prompt file
     prompt_content = f'summary = "{summary}"\n\nprompt = """\n{prompt_text}\n"""'
-    
+
     try:
         with open(prompt_file, "w", encoding="utf-8") as f:
             f.write(prompt_content)
@@ -198,7 +216,7 @@ def edit_prompt(name: str) -> bool:
     try:
         # Open the file in the editor
         result = subprocess.run([editor, str(prompt_file)], check=True)
-        
+
         if result.returncode != 0:
             return False
 
@@ -368,3 +386,5 @@ def ensure_config_dirs() -> None:
             f.write("# pipai configuration\n")
             f.write("# Uncomment and set your default LLM model\n")
             f.write("# DEFAULT_LLM=gpt-3.5-turbo\n")
+            f.write("\n# Enable or disable markdown formatting for responses\n")
+            f.write("# MARKDOWN_FORMATTING=true\n")
