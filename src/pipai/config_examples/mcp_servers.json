@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "git": {
+      "command": "mcp-server-git",
+      "args": [],
+      "env": {}
+    },
+    "browser": {
+      "command": "mcp-server-fetch",
+      "args": [],
+      "env": {}
+    }
+  }
+}

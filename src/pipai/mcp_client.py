@@ -53,7 +53,7 @@ class Tool:
 Tool: {self.name}
 Description: {self.description}
 Arguments:
-{'\n'.join(args_desc)}
+{"\n".join(args_desc)}
 """
 
 
@@ -205,12 +205,8 @@ class MCPClient:
             json.JSONDecodeError: If the configuration file is invalid JSON
             RuntimeError: If server initialization fails
         """
-        try:
-            with open(config_path, "r") as f:
-                config = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            logging.error(f"Error loading server configuration: {e}")
-            raise
+        with open(config_path, "r") as f:
+            config = json.load(f)
 
         # Clean up any existing servers
         await self.cleanup_servers()
@@ -245,7 +241,7 @@ class MCPClient:
                 await asyncio.gather(*cleanup_tasks, return_exceptions=True)
             except Exception as e:
                 logging.warning(f"Warning during final cleanup: {e}")
-        
+
         self._initialized = False
 
     async def get_all_tools(self) -> List[Tool]:
@@ -262,11 +258,8 @@ class MCPClient:
 
         all_tools = []
         for server in self.servers:
-            try:
-                tools = await server.list_tools()
-                all_tools.extend(tools)
-            except Exception as e:
-                logging.error(f"Error getting tools from server {server.name}: {e}")
+            tools = await server.list_tools()
+            all_tools.extend(tools)
 
         return all_tools
 
@@ -291,15 +284,10 @@ class MCPClient:
             raise RuntimeError("MCP servers not initialized")
 
         for server in self.servers:
-            try:
-                tools = await server.list_tools()
-                if any(tool.name == tool_name for tool in tools):
-                    result = await server.execute_tool(tool_name, arguments)
-                    return True, result
-            except Exception as e:
-                error_msg = f"Error executing tool {tool_name}: {str(e)}"
-                logging.error(error_msg)
-                return False, error_msg
+            tools = await server.list_tools()
+            if any(tool.name == tool_name for tool in tools):
+                result = await server.execute_tool(tool_name, arguments)
+                return True, result
 
         return False, f"No server found with tool: {tool_name}"
 
@@ -315,13 +303,26 @@ class MCPClient:
         if not self._initialized:
             raise RuntimeError("MCP servers not initialized")
 
-        async def _get_descriptions():
-            all_tools = await self.get_all_tools()
-            return "\n".join([tool.format_for_llm() for tool in all_tools])
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            new_loop = True
+        else:
+            new_loop = False
 
-        # Run the async function in a new event loop
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(_get_descriptions())
-        finally:
+        async def _get_descriptions():
+            try:
+                all_tools = await self.get_all_tools()
+                return "\n".join([tool.format_for_llm() for tool in all_tools])
+            except Exception as e:
+                logging.error(f"Error getting tools description: {e}")
+                return "Error retrieving tools description."
+
+        result = loop.run_until_complete(_get_descriptions())
+
+        # Only close the loop if we created a new one
+        if new_loop:
             loop.close()
+
+        return result

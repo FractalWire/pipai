@@ -41,6 +41,7 @@ def get_config() -> Dict[str, Any]:
     config = {
         "DEFAULT_LLM": None,
         "MARKDOWN_FORMATTING": True,
+        "ENABLE_MCP_TOOLS": False,
     }
 
     config_dir = get_config_dir()
@@ -65,6 +66,8 @@ def get_config() -> Dict[str, Any]:
                 if key == "DEFAULT_LLM":
                     config[key] = value
                 elif key == "MARKDOWN_FORMATTING":
+                    config[key] = value.lower() in ("true", "yes", "1", "on")
+                elif key == "ENABLE_MCP_TOOLS":
                     config[key] = value.lower() in ("true", "yes", "1", "on")
 
     return config
@@ -371,6 +374,15 @@ def is_conversation_expired(timeout_hours: float = 1.0) -> bool:
     return time.time() > expiration_time
 
 
+def get_mcp_config_file() -> pathlib.Path:
+    """Get the file path for MCP server configuration.
+
+    Returns:
+        Path to the MCP server configuration file
+    """
+    return get_config_dir() / "mcp_servers.json"
+
+
 def ensure_config_dirs() -> None:
     """Ensure that configuration directories exist."""
     config_dir = get_config_dir()
@@ -388,3 +400,5 @@ def ensure_config_dirs() -> None:
             f.write("# DEFAULT_LLM=gpt-3.5-turbo\n")
             f.write("\n# Enable or disable markdown formatting for responses\n")
             f.write("# MARKDOWN_FORMATTING=true\n")
+            f.write("\n# Enable or disable MCP tools\n")
+            f.write("# ENABLE_MCP_TOOLS=false\n")

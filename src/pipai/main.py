@@ -6,6 +6,9 @@ to generate responses from LLM models.
 """
 
 import argparse
+import asyncio
+import json
+import logging
 import sys
 from typing import Dict, List, Optional
 
@@ -14,21 +17,24 @@ from rich.console import Console
 from rich.markdown import Markdown
 
 from pipai.config import (
+    add_message_to_conversation,
+    create_prompt,
+    delete_prompt,
+    edit_prompt,
     ensure_config_dirs,
     get_available_prompts,
     get_config,
+    get_config_dir,
+    get_conversation_messages,
+    get_mcp_config_file,
     get_prompt_summary,
-    load_prompt,
+    is_conversation_expired,
     load_conversation,
+    load_prompt,
     start_conversation,
     stop_conversation,
-    add_message_to_conversation,
-    get_conversation_messages,
-    is_conversation_expired,
-    edit_prompt,
-    create_prompt,
-    delete_prompt,
 )
+from pipai.mcp_client import MCPClient
 
 
 def list_models(filter_string: Optional[str] = None) -> None:
@@ -93,12 +99,120 @@ def check_conversation_expiry() -> bool:
     return True
 
 
+def initialize_mcp_client() -> Optional[MCPClient]:
+    """Initialize the MCP client if enabled in config.
+
+    Returns:
+        Initialized MCPClient or None if disabled or error
+    """
+    config = get_config()
+    if not config.get("ENABLE_MCP_TOOLS", False):
+        return None
+
+    mcp_config_file = get_mcp_config_file()
+    if not mcp_config_file.exists():
+        logging.warning("MCP configuration file not found")
+        return None
+
+    client = MCPClient()
+
+    loop = asyncio.get_event_loop()
+    if loop.is_closed():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        new_loop = True
+    else:
+        new_loop = False
+
+    async def _initialize():
+        await client.load_servers(str(mcp_config_file))
+        return client
+
+    result = loop.run_until_complete(_initialize())
+
+    # Only close the loop if we created a new one
+    if new_loop:
+        loop.close()
+
+    return result
+
+
+def get_tools_system_prompt(mcp_client: MCPClient) -> str:
+    """Get the system prompt for tools.
+
+    Returns:
+        System prompt for tools
+    """
+    if not mcp_client:
+        return ""
+
+    tools_description = mcp_client.get_tools_description()
+
+    return (
+        "You are a helpful assistant with access to these tools:\n\n"
+        f"{tools_description}\n"
+        "Choose the appropriate tool based on the user's question. "
+        "If no tool is needed, reply directly.\n\n"
+        "IMPORTANT: When you need to use a tool, you must ONLY respond with "
+        "the exact JSON object format below, nothing else:\n"
+        "{\n"
+        '    "tool": "tool-name",\n'
+        '    "arguments": {\n'
+        '        "argument-name": "value"\n'
+        "    }\n"
+        "}\n\n"
+        "After receiving a tool's response:\n"
+        "1. Transform the raw data into a natural, conversational response\n"
+        "2. Keep responses concise but informative\n"
+        "3. Focus on the most relevant information\n"
+        "4. Use appropriate context from the user's question\n"
+        "5. Avoid simply repeating the raw data\n\n"
+        "Please use only the tools that are explicitly defined above."
+    )
+
+
+async def execute_tool(tool_response: str, mcp_client: MCPClient) -> Optional[str]:
+    """Execute a tool based on the LLM's response.
+
+    Args:
+        tool_response: The response from the LLM
+
+    Returns:
+        The result of tool execution or None if no tool call detected
+    """
+    if not mcp_client:
+        return None
+
+    try:
+        tool_call = json.loads(tool_response)
+        if "tool" in tool_call and "arguments" in tool_call:
+            logging.info(f"Executing tool: {tool_call['tool']}")
+            logging.info(f"With arguments: {tool_call['arguments']}")
+
+            success, result = await mcp_client.execute_tool(
+                tool_call["tool"], tool_call["arguments"]
+            )
+
+            if success:
+                return f"Tool execution result: {result}"
+            else:
+                return f"Tool execution failed: {result}"
+
+        return None
+    except json.JSONDecodeError:
+        return None
+    except Exception as e:
+        logging.error(f"Error executing tool: {e}")
+        return f"Error executing tool: {str(e)}"
+
+
 def process_input(
     model_name: str,
     user_prompt: str,
     predefined_prompts: Dict[str, str],
     use_conversation: bool = True,
     use_markdown: Optional[bool] = None,
+    mcp_client: Optional[MCPClient] = None,
 ) -> None:
     """Process stdin input as context and use provided prompt.
 
@@ -125,9 +239,17 @@ def process_input(
     # Add predefined prompts as system prompts
     system_content = ""
 
+    # Add MCP tools system prompt if available
+    tools_prompt = get_tools_system_prompt(mcp_client=mcp_client)
+    if tools_prompt:
+        system_content += tools_prompt + "\n\n"
+
     # If no predefined prompts are specified and markdown is enabled, add markdown formatting
     if not predefined_prompts and use_markdown:
-        system_content += "Format your response in clean, well-structured Markdown.\n\n"
+        system_content += (
+            "When you are not using a tool, format your response in clean,"
+            " well-structured Markdown.\n\n"
+        )
 
     # Add any specified predefined prompts
     for name, content in predefined_prompts.items():
@@ -166,6 +288,50 @@ def process_input(
         response = litellm.completion(model=model_name, messages=messages)
         assistant_response = response.choices[0].message.content
 
+        # Check if response is a tool call
+        tool_result = None
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            new_loop = True
+        else:
+            new_loop = False
+
+        async def _execute_tool():
+            return await execute_tool(
+                tool_response=assistant_response, mcp_client=mcp_client
+            )
+
+        tool_result = loop.run_until_complete(_execute_tool())
+
+        # Only close the loop if we created a new one
+        if new_loop:
+            loop.close()
+
+        # Add assistant response to conversation history
+        if use_conversation:
+            add_message_to_conversation("assistant", assistant_response)
+
+        # If tool was executed, get a new response with the tool result
+        if tool_result:
+            # Add tool result as system message
+            messages.append({"role": "assistant", "content": assistant_response})
+            messages.append({"role": "user", "content": tool_result})
+
+            # Add tool result to conversation history
+            if use_conversation:
+                add_message_to_conversation("user", tool_result)
+
+            # Get final response from LLM
+            final_response = litellm.completion(model=model_name, messages=messages)
+            assistant_response = final_response.choices[0].message.content
+
+            # Add final response to conversation history
+            if use_conversation:
+                add_message_to_conversation("assistant", assistant_response)
+
         # Render the response
         console = Console()
         if use_markdown:
@@ -174,9 +340,6 @@ def process_input(
         else:
             console.print(assistant_response)
 
-        # Add assistant response to conversation history
-        if use_conversation:
-            add_message_to_conversation("assistant", assistant_response)
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
@@ -184,8 +347,21 @@ def process_input(
 
 def main() -> None:
     """Main entry point for the CLI tool."""
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(f"{get_config_dir()}/pipai.log"),
+            logging.NullHandler(),
+        ],
+    )
+
     # Ensure config directories exist
     ensure_config_dirs()
+
+    # Initialize MCP client
+    mcp_client = initialize_mcp_client()
 
     # Get available prompts for dynamic argument creation
     available_prompts = get_available_prompts()
@@ -276,6 +452,14 @@ def main() -> None:
         "prompt", nargs="?", default=None, help="The prompt to send to the LLM model"
     )
 
+    # Add MCP tools option
+    parser.add_argument(
+        "--enable-mcp-tools",
+        action="store_true",
+        help="Enable MCP tools for this session",
+    )
+
+    # Parse arguments
     args = parser.parse_args()
 
     if args.models is not None:
@@ -377,6 +561,9 @@ def main() -> None:
     if not model_name:
         model_name = config.get("DEFAULT_LLM", None)
 
+    if args.enable_mcp_tools:
+        config["ENABLE_MCP_TOOLS"] = True
+
     if not model_name:
         parser.error("No model specified. Use --model or set DEFAULT_LLM in config.")
         return
@@ -418,7 +605,12 @@ def main() -> None:
         use_markdown = config.get("MARKDOWN_FORMATTING")
 
     process_input(
-        model_name, user_prompt, predefined_prompts, use_conversation, use_markdown
+        model_name,
+        user_prompt,
+        predefined_prompts,
+        use_conversation,
+        use_markdown,
+        mcp_client,
     )
 
 
