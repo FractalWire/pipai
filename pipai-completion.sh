@@ -8,7 +8,7 @@ _pipai_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
     # Basic options
-    opts="--models --model --prompts --create-prompt --edit-prompt --delete-prompt --start-conversation --stop-conversation --no-conversation --markdown --no-markdown --enable-mcp-tools --set-config"
+    opts="--models --model --prompts --create-prompt --edit-prompt --delete-prompt --start-conversation --stop-conversation --no-conversation --markdown --no-markdown --enable-mcp-tools --set-config --show-config"
     
     # Add dynamic prompts from config directory
     if [ -n "$XDG_CONFIG_HOME" ]; then

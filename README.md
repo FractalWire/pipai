@@ -17,6 +17,7 @@ A command-line tool that uses LiteLLM to interact with various LLM models. It ta
   - [Managing Conversations](#managing-conversations)
   - [Using MCP Tools](#using-mcp-tools)
   - [Setting Configuration](#setting-configuration)
+  - [Viewing Configuration](#viewing-configuration)
 - [Examples](#examples)
 - [Bash Auto-completion](#bash-auto-completion)
 - [Requirements](#requirements)
@@ -324,6 +325,17 @@ pipai --set-config MARKDOWN_FORMATTING=true
 # Disable MCP tools by default
 pipai --set-config ENABLE_MCP_TOOLS=false
 ```
+
+### Viewing Configuration
+
+You can view the currently active configuration settings:
+
+```bash
+pipai --show-config
+```
+
+This will display the values loaded from your configuration file, including defaults.
+
 ```
 
 ## Bash Auto-completion

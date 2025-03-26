@@ -75,6 +75,16 @@ def list_prompts() -> None:
         print(f"  - {prompt}")
 
 
+def show_config() -> None:
+    """Display the current configuration settings."""
+    config = get_config()
+    config_file = get_config_dir() / "config"
+    print(f"Configuration loaded from: {config_file}")
+    print("\nCurrent settings:")
+    for key, value in config.items():
+        print(f"  - {key}: {value}")
+
+
 def check_conversation_expiry() -> bool:
     """Check if conversation has expired and prompt user for action.
 
@@ -408,6 +418,11 @@ def main() -> None:
         metavar="KEY=VALUE",
         help="Set a configuration value (e.g., DEFAULT_LLM=gpt-4)",
     )
+    group.add_argument(
+        "--show-config",
+        action="store_true",
+        help="Show the current configuration settings",
+    )
 
     # Add conversation management arguments
     conversation_group = parser.add_argument_group("Conversation Management")
@@ -474,6 +489,10 @@ def main() -> None:
 
     if args.prompts:
         list_prompts()
+        return
+
+    if args.show_config:
+        show_config()
         return
 
     if args.set_config:
