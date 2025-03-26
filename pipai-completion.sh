@@ -8,7 +8,7 @@ _pipai_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
     # Basic options
-    opts="--models --model --prompts --create-prompt --edit-prompt --delete-prompt --start-conversation --stop-conversation --no-conversation --markdown --no-markdown"
+    opts="--models --model --prompts --create-prompt --edit-prompt --delete-prompt --start-conversation --stop-conversation --no-conversation --markdown --no-markdown --enable-mcp-tools --set-config"
     
     # Add dynamic prompts from config directory
     if [ -n "$XDG_CONFIG_HOME" ]; then
@@ -50,6 +50,11 @@ _pipai_completion() {
                 prompts=$(find "$PROMPT_DIR" -type f -exec basename {} \; 2>/dev/null)
                 COMPREPLY=( $(compgen -W "$prompts" -- "$cur") )
             fi
+            return 0
+            ;;
+        --set-config)
+            # Suggest known config keys
+            COMPREPLY=( $(compgen -W "DEFAULT_LLM= MARKDOWN_FORMATTING= ENABLE_MCP_TOOLS=" -- "$cur") )
             return 0
             ;;
         *)

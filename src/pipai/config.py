@@ -7,12 +7,10 @@ and managing pre-defined prompts.
 import json
 import os
 import pathlib
-import shutil
 import subprocess
 import time
-from datetime import datetime, timedelta
 import tomllib
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Any, Dict, List, Optional
 
 
 def get_config_dir() -> pathlib.Path:
@@ -232,6 +230,58 @@ def edit_prompt(name: str) -> bool:
             return False
     except Exception:
         return False
+
+
+def set_config_value(key: str, value: str) -> bool:
+    """Set a specific configuration value in the config file.
+
+    Args:
+        key: The configuration key to set (e.g., DEFAULT_LLM)
+        value: The value to set for the key
+
+    Returns:
+        True if the value was set successfully, False otherwise
+    """
+    config_dir = get_config_dir()
+    config_file = config_dir / "config"
+    ensure_config_dirs()  # Ensure the directory and a default file exist
+
+    lines = []
+    key_found = False
+    valid_keys = {"DEFAULT_LLM", "MARKDOWN_FORMATTING", "ENABLE_MCP_TOOLS"}
+
+    if key not in valid_keys:
+        print(f"Error: Invalid configuration key '{key}'.")
+        print(f"Valid keys are: {', '.join(valid_keys)}")
+        return False
+
+    if config_file.exists():
+        with open(config_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+    with open(config_file, "w", encoding="utf-8") as f:
+        for line in lines:
+            stripped_line = line.strip()
+            if (
+                not stripped_line
+                or stripped_line.startswith("#")
+                or "=" not in stripped_line
+            ):
+                f.write(line)
+                continue
+
+            current_key, _ = stripped_line.split("=", 1)
+            if current_key.strip() == key:
+                f.write(f"{key}={value}\n")
+                key_found = True
+            else:
+                f.write(line)
+
+        if not key_found:
+            # Add the new key if it wasn't found
+            f.write(f"{key}={value}\n")
+
+    return True
 
 
 def load_prompts(prompt_names: List[str]) -> Dict[str, str]:

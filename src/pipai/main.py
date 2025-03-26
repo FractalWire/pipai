@@ -31,6 +31,7 @@ from pipai.config import (
     is_conversation_expired,
     load_conversation,
     load_prompt,
+    set_config_value,
     start_conversation,
     stop_conversation,
 )
@@ -402,6 +403,11 @@ def main() -> None:
         metavar="NAME",
         help="Delete an existing pre-defined prompt",
     )
+    group.add_argument(
+        "--set-config",
+        metavar="KEY=VALUE",
+        help="Set a configuration value (e.g., DEFAULT_LLM=gpt-4)",
+    )
 
     # Add conversation management arguments
     conversation_group = parser.add_argument_group("Conversation Management")
@@ -468,6 +474,18 @@ def main() -> None:
 
     if args.prompts:
         list_prompts()
+        return
+
+    if args.set_config:
+        if "=" not in args.set_config:
+            parser.error("Invalid format for --set-config. Use KEY=VALUE.")
+            return
+
+        key, value = args.set_config.split("=", 1)
+        if set_config_value(key.strip(), value.strip()):
+            print(f"Configuration updated: {key}={value}")
+        else:
+            print(f"Failed to update configuration for key: {key}")
         return
 
     if args.create_prompt:

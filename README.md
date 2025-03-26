@@ -9,11 +9,14 @@ A command-line tool that uses LiteLLM to interact with various LLM models. It ta
   - [Default Model](#default-model)
   - [LiteLLM Configuration](#litellm-configuration)
   - [Pre-defined Prompts](#pre-defined-prompts)
+  - [MCP Tools Configuration](#mcp-tools-configuration)
 - [Usage](#usage)
   - [Basic Commands](#basic-commands)
   - [Working with Models](#working-with-models)
   - [Working with Prompts](#working-with-prompts)
   - [Managing Conversations](#managing-conversations)
+  - [Using MCP Tools](#using-mcp-tools)
+  - [Setting Configuration](#setting-configuration)
 - [Examples](#examples)
 - [Bash Auto-completion](#bash-auto-completion)
 - [Requirements](#requirements)
@@ -145,12 +148,51 @@ You can also set the default behavior in your config file:
 ```
 # In $XDG_CONFIG_HOME/pipai/config
 MARKDOWN_FORMATTING=true
+ENABLE_MCP_TOOLS=false
 ```
 
 If you try to continue a conversation that's been inactive for more than 1 hour, pipai will ask if you want to:
 - Continue the existing conversation
 - Stop the old conversation and start fresh
 - Abort the current query
+
+### MCP Tools Configuration
+
+pipai supports the Model Control Protocol (MCP) for enabling LLMs to use external tools. To configure MCP tools:
+
+1. Create an MCP server configuration file:
+
+```
+$XDG_CONFIG_HOME/pipai/mcp_servers.json
+```
+
+Example configuration:
+
+```json
+{
+  "mcpServers": {
+    "git": {
+      "command": "mcp-server-git",
+      "args": [],
+      "env": {}
+    },
+    "browser": {
+      "command": "mcp-server-fetch",
+      "args": [],
+      "env": {}
+    }
+  }
+}
+```
+
+2. Enable MCP tools in your config file:
+
+```
+# In $XDG_CONFIG_HOME/pipai/config
+ENABLE_MCP_TOOLS=true
+```
+
+You can also enable MCP tools for a single session using the `--enable-mcp-tools` flag.
 
 ## Usage
 
@@ -221,6 +263,23 @@ pipai --no-conversation "What's the weather today?"
 pipai --stop-conversation
 ```
 
+### Using MCP Tools
+
+MCP (Model Control Protocol) allows LLMs to use external tools to perform tasks like fetching web content, interacting with git repositories, and more.
+
+```bash
+# Enable MCP tools for a single session
+pipai --enable-mcp-tools "Clone the repository at https://github.com/example/repo.git"
+
+# Ask questions that might require tools
+pipai --enable-mcp-tools "What are the latest commits in the current git repository?"
+
+# Fetch and summarize web content
+pipai --enable-mcp-tools "Summarize the content from https://example.com"
+```
+
+When MCP tools are enabled, the LLM will automatically decide when to use tools based on your query. You don't need to explicitly specify which tool to use.
+
 ## Examples
 
 ```bash
@@ -241,6 +300,30 @@ pipai --start-conversation "Tell me about quantum computing"
 pipai "What are the practical applications?"
 pipai "Which companies are leaders in this field?"
 pipai --stop-conversation
+
+# Use MCP tools to interact with git repositories
+pipai --enable-mcp-tools "What files changed in the last commit?"
+
+# Use MCP tools to fetch and analyze web content
+pipai --enable-mcp-tools "Summarize the main points from https://example.com/article"
+
+# Combine MCP tools with other features
+pipai --markdown --enable-mcp-tools "Create a table of the top 5 contributors to this git repository"
+
+### Setting Configuration
+
+You can modify configuration settings directly from the command line:
+
+```bash
+# Set the default LLM model
+pipai --set-config DEFAULT_LLM=claude-3-opus-20240229
+
+# Enable markdown formatting by default
+pipai --set-config MARKDOWN_FORMATTING=true
+
+# Disable MCP tools by default
+pipai --set-config ENABLE_MCP_TOOLS=false
+```
 ```
 
 ## Bash Auto-completion
